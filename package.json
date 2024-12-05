@@ -1,0 +1,17 @@
+{
+  "name": "vf-voice-outbound",
+  "version": "1.0.1",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "twilio": "^5.3.6"
+  }
+}
