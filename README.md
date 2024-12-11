@@ -24,17 +24,11 @@ Create a `.env` file with the following variables:
 ```env
 TWILIO_ACCOUNT_SID=your_twilio_account_sid
 TWILIO_AUTH_TOKEN=your_twilio_auth_token
-VOICEFLOW_API_KEY=your_voiceflow_api_key
-VOICEFLOW_WEBHOOK_ID=your_voiceflow_webhook_id
 SERVER_URL=your_server_url
 PORT=4242  # Optional, defaults to 4242
 ```
 
-> **Note:** The Voiceflow API key and webhook ID can be found in your Twilio Phone Numbers section.
-> Select your phone number and look for the webhook URL:
-> ```
-> https://runtime-api.voiceflow.com/v1/twilio/webhooks/{VOICEFLOW_WEBHOOK_ID}/answer?authorization={VOICEFLOW_API_KEY}
-> ```
+> **Note:** The Voiceflow API key and webhook ID matching the Twilio phone number will be fetched from your Twilio account.
 
 
 ## Installation

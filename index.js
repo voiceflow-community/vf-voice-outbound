@@ -22,6 +22,42 @@ const authToken = process.env.TWILIO_AUTH_TOKEN
 // Create a Twilio client
 const client = twilio(accountSid, authToken)
 
+// Function to get Voiceflow webhook details from Twilio number
+async function getVoiceflowWebhookDetails(phoneNumber) {
+  try {
+    console.log('Fetching webhook details for phone number:', phoneNumber)
+    // Get the phone number details from Twilio
+    const numbers = await client.incomingPhoneNumbers.list({ phoneNumber })
+    // console.log('Found Twilio numbers:', numbers)
+
+    if (!numbers || numbers.length === 0) {
+      throw new Error('Phone number not found in Twilio account')
+    }
+
+    const number = numbers[0]
+
+    if (!number.voiceUrl) {
+      throw new Error('No voice URL configured for this phone number')
+    }
+
+    // Parse the Voiceflow webhook URL
+    const voiceflowUrl = new URL(number.voiceUrl)
+
+    if (!voiceflowUrl.pathname.includes('/webhooks/')) {
+      throw new Error('Invalid Voiceflow webhook URL')
+    }
+
+    // Extract webhook ID and API key
+    const webhookId = voiceflowUrl.pathname.split('/webhooks/')[1].split('/')[0]
+    const apiKey = voiceflowUrl.searchParams.get('authorization')
+
+    return { webhookId, apiKey }
+  } catch (error) {
+    console.error('Error getting Voiceflow webhook details:', error)
+    throw error
+  }
+}
+
 // Get server URL from environment variables
 const serverUrl = process.env.SERVER_URL
 
@@ -53,16 +89,37 @@ app.post('/voice', async (req, res) => {
   const callSid = req.body.CallSid
   const answeredBy = req.body.AnsweredBy
 
+  console.log('Voice endpoint called with:', {
+    callSid,
+    answeredBy,
+    to: req.body.To,
+    from: req.body.From,
+    body: req.body,
+  })
+
   try {
     // Handle human or unknown cases (since unknown could be a human)
-    if (answeredBy === 'human' || answeredBy === 'unknown') {
+    if (
+      answeredBy === 'human' ||
+      answeredBy === 'unknown' ||
+      answeredBy === 'machine_end_silence' ||
+      answeredBy === 'machine_end_other'
+    ) {
+      console.log('Call answered by human/unknown, fetching webhook details...')
+      // Get Voiceflow webhook details from the 'from' number
+      const { webhookId, apiKey } = await getVoiceflowWebhookDetails(
+        req.body.From
+      )
+
+      console.log('Webhook Id:', webhookId)
+
       // Only redirect to Voiceflow if a human or unknown answered
       const voiceflowUrl = new URL(
-        `https://runtime-api.voiceflow.com/v1/twilio/webhooks/${process.env.VOICEFLOW_WEBHOOK_ID}/answer`
+        `https://runtime-api.voiceflow.com/v1/twilio/webhooks/${webhookId}/answer`
       )
 
       const params = new URLSearchParams({
-        authorization: process.env.VOICEFLOW_API_KEY,
+        authorization: apiKey,
         From: req.body.To,
         To: req.body.From,
         CallSid: req.body.CallSid,
@@ -85,8 +142,7 @@ app.post('/voice', async (req, res) => {
       }
     } else if (
       answeredBy === 'machine_start' ||
-      answeredBy === 'machine_end_beep' ||
-      answeredBy === 'machine_end_silence'
+      answeredBy === 'machine_end_beep'
     ) {
       // Handle voicemail detection
       // You can choose to make the call hangup here, or let it continue instead
